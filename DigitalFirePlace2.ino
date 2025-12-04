@@ -1,3 +1,5 @@
+struct SensorReadings;
+
 #include <Adafruit_GFX.h>
 #include <Adafruit_NeoPixel.h>
 #include <Adafruit_SSD1306.h>
@@ -450,3 +452,6 @@ void loop() {
   handleHttp();
 }
 
+#include "sensor_readings.h"
+#include <Adafruit_GFX.h>
+#include <Adafruit_NeoPixel.h>
