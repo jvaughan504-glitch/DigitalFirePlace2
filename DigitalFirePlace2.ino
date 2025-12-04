@@ -7,6 +7,7 @@
 
 #include "fireplace_config.h"
 #include "fire_animation.h"
+#include "sensor_readings.h"
 
 #ifdef ARDUINO_ARCH_ESP32
 #include <WebServer.h>
@@ -118,11 +119,6 @@ static ButtonEvent updateButton(ButtonState &button) {
 
   return ButtonEvent::kNone;
 }
-
-struct SensorReadings {
-  float temperatureC;
-  float humidity;
-};
 
 static SensorReadings readDht() {
   const float humidity = dht.readHumidity();
