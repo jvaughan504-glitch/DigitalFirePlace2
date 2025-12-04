@@ -5,7 +5,7 @@
 namespace FireplaceConfig {
 // Pin assignments
 static constexpr uint8_t kRelayPin = 5;
-static constexpr uint8_t kThermistorPin = 34;  // ADC capable pin
+static constexpr uint8_t kDhtPin = 4;
 static constexpr uint8_t kNeoPixelPin = 18;
 static constexpr uint8_t kButtonTempUp = 25;
 static constexpr uint8_t kButtonTempDown = 26;
@@ -16,19 +16,10 @@ static constexpr uint8_t kButtonMode = 32;
 // NeoPixel configuration
 static constexpr uint16_t kNeoPixelCount = 10;
 
-// Thermistor calibration (Steinhart-Hart parameters)
-static constexpr float kSeriesResistor = 10000.0f;
-static constexpr float kNominalResistance = 10000.0f; // Resistance at 25C
-static constexpr float kNominalTemperatureC = 25.0f;
-static constexpr float kBCoefficient = 3950.0f;
-
-// ADC configuration
-static constexpr uint16_t kAdcMax = 4095; // 12-bit ADC
-static constexpr float kAdcVoltage = 3.3f;
-
 // Control configuration
 static constexpr float kTemperatureStep = 0.5f;
 static constexpr float kTemperatureSmoothAlpha = 0.2f;  // EMA coefficient for sensor noise
+static constexpr float kHumiditySmoothAlpha = 0.2f;
 static constexpr uint8_t kMinBrightness = 10;
 static constexpr uint8_t kMaxBrightness = 255;
 static constexpr uint8_t kBrightnessStep = 15;

@@ -1,6 +1,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_NeoPixel.h>
 #include <Adafruit_SSD1306.h>
+#include <DHT.h>
 #include <Wire.h>
 #include <math.h>
 
@@ -42,6 +43,7 @@ static ButtonState buttonMode{FireplaceConfig::kButtonMode, false, 0, 0, false};
 static Adafruit_SSD1306 display(128, 64, &Wire, FireplaceConfig::kOledResetPin);
 static Adafruit_NeoPixel strip(FireplaceConfig::kNeoPixelCount, FireplaceConfig::kNeoPixelPin,
                                NEO_GRB + NEO_KHZ800);
+static DHT dht(FireplaceConfig::kDhtPin, DHT11);
 static bool displayReady = false;
 static float targetTemperatureC = 21.0f;
 static uint8_t targetBrightness = 160;
@@ -51,6 +53,7 @@ enum class OperatingMode { kFireOnly, kFireAndHeat, kHeatOnly };
 static bool heaterActive = false;
 static OperatingMode operatingMode = OperatingMode::kFireAndHeat;
 static float lastTemperatureC = NAN;
+static float lastHumidity = NAN;
 
 #ifdef ARDUINO_ARCH_ESP32
 static WebServer server(80);
@@ -116,29 +119,18 @@ static ButtonEvent updateButton(ButtonState &button) {
   return ButtonEvent::kNone;
 }
 
-static float readThermistorCelsius() {
-  const int raw = analogRead(FireplaceConfig::kThermistorPin);
-  if (raw <= 0) {
-    return -40.0f;
-  }
+struct SensorReadings {
+  float temperatureC;
+  float humidity;
+};
 
-  float resistance = FireplaceConfig::kSeriesResistor *
-                     ((FireplaceConfig::kAdcMax / static_cast<float>(raw)) - 1.0f);
-  if (resistance <= 0.0f) {
-    resistance = FireplaceConfig::kSeriesResistor;
-  }
-
-  float steinhart;
-  steinhart = resistance / FireplaceConfig::kNominalResistance;
-  steinhart = log(steinhart);
-  steinhart /= FireplaceConfig::kBCoefficient;
-  steinhart += 1.0f / (FireplaceConfig::kNominalTemperatureC + 273.15f);
-  steinhart = 1.0f / steinhart;
-  steinhart -= 273.15f;
-  return steinhart;
+static SensorReadings readDht() {
+  const float humidity = dht.readHumidity();
+  const float temperatureC = dht.readTemperature();
+  return {temperatureC, humidity};
 }
 
-static void updateDisplay(float currentTemperatureC) {
+static void updateDisplay(float currentTemperatureC, float currentHumidity) {
   if (!displayReady) {
     return;
   }
@@ -154,6 +146,16 @@ static void updateDisplay(float currentTemperatureC) {
   //display.write(247);  // Degree symbol
   display.println("C");
 
+  display.setCursor(70, 0);
+  display.println("Hum:");
+  display.setCursor(70, 10);
+  if (isnan(currentHumidity)) {
+    display.println("--");
+  } else {
+    display.print(currentHumidity, 0);
+    display.println("%");
+  }
+
   display.setCursor(0, 25);
   display.println("Set:");
   display.print(targetTemperatureC, 1);
@@ -161,9 +163,9 @@ static void updateDisplay(float currentTemperatureC) {
   display.println("C");
 
   display.setTextSize(1);
-  display.setCursor(70, 0);
+  display.setCursor(70, 25);
   display.print("Mode:");
-  display.setCursor(70, 10);
+  display.setCursor(70, 35);
   display.print(modeLabel());
 
   display.setCursor(0, 50);
@@ -177,11 +179,25 @@ static void updateDisplay(float currentTemperatureC) {
 }
 
 static float smoothTemperature(float measurementC) {
+  if (isnan(measurementC)) {
+    return lastTemperatureC;
+  }
   if (isnan(lastTemperatureC)) {
     return measurementC;
   }
   const float alpha = FireplaceConfig::kTemperatureSmoothAlpha;
   return (alpha * measurementC) + ((1.0f - alpha) * lastTemperatureC);
+}
+
+static float smoothHumidity(float measurement) {
+  if (isnan(measurement)) {
+    return lastHumidity;
+  }
+  if (isnan(lastHumidity)) {
+    return measurement;
+  }
+  const float alpha = FireplaceConfig::kHumiditySmoothAlpha;
+  return (alpha * measurement) + ((1.0f - alpha) * lastHumidity);
 }
 
 #ifdef ARDUINO_ARCH_ESP32
@@ -210,6 +226,13 @@ static String renderPage() {
   } else {
     page += String(lastTemperatureC, 1);
     page += " &deg;C";
+  }
+  page += "<br/>Humidity: ";
+  if (isnan(lastHumidity)) {
+    page += "--";
+  } else {
+    page += String(lastHumidity, 0);
+    page += " %";
   }
   page += "<br/>Set: ";
   page += String(targetTemperatureC, 1);
@@ -408,22 +431,25 @@ void setup() {
     drawSplash();
   }
 
-  randomSeed(analogRead(FireplaceConfig::kThermistorPin));
+  randomSeed(analogRead(FireplaceConfig::kDhtPin));
 
   FireAnimation::begin(strip, effectiveBrightness());
   fireState.baseBrightness = effectiveBrightness();
   fireState.lastFrameMs = millis();
 
+  dht.begin();
   startWifiAndServer();
 }
 
 void loop() {
   handleButtons();
-  const float measuredTemperatureC = readThermistorCelsius();
-  const float currentTemperatureC = smoothTemperature(measuredTemperatureC);
+  const SensorReadings readings = readDht();
+  const float currentTemperatureC = smoothTemperature(readings.temperatureC);
+  const float currentHumidity = smoothHumidity(readings.humidity);
   lastTemperatureC = currentTemperatureC;
+  lastHumidity = currentHumidity;
   updateHeater(currentTemperatureC);
-  updateDisplay(currentTemperatureC);
+  updateDisplay(currentTemperatureC, currentHumidity);
   FireAnimation::update(strip, fireState, effectiveBrightness());
   handleHttp();
 }
