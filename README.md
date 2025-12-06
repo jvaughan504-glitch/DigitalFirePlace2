@@ -4,7 +4,7 @@ Wifi control upgrade for electic fireplace
 
 ## Firmware sketch
 
-Source files for the controller firmware live in `src/`. The main sketch `DigitalFirePlace.ino`
+Source files for the controller firmware live in `src/`. The main sketch `DigitalFirePlace2.ino`
 initialises the relay, DS18B20 temperature probe, five buttons (temperature up/down, brightness up/down, and a
 mode selector), 10 NeoPixels, and the Adafruit Micro OLED display. Supporting modules provide
 configuration constants (`fireplace_config.h`), a flame animation (`fire_animation.cpp`), and an
