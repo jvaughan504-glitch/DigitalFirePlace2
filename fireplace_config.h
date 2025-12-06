@@ -5,7 +5,7 @@
 namespace FireplaceConfig {
 // Pin assignments
 static constexpr uint8_t kRelayPin = 5;
-static constexpr uint8_t kDhtPin = 4;
+static constexpr uint8_t kTempSensorPin = 4;
 static constexpr uint8_t kNeoPixelPin = 18;
 static constexpr uint8_t kButtonTempUp = 25;
 static constexpr uint8_t kButtonTempDown = 26;
@@ -19,7 +19,6 @@ static constexpr uint16_t kNeoPixelCount = 10;
 // Control configuration
 static constexpr float kTemperatureStep = 0.5f;
 static constexpr float kTemperatureSmoothAlpha = 0.2f;  // EMA coefficient for sensor noise
-static constexpr float kHumiditySmoothAlpha = 0.2f;
 static constexpr uint8_t kMinBrightness = 10;
 static constexpr uint8_t kMaxBrightness = 255;
 static constexpr uint8_t kBrightnessStep = 15;
