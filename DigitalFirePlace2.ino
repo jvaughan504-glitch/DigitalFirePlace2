@@ -1,5 +1,3 @@
-struct SensorReadings;
-
 #include <Adafruit_GFX.h>
 #include <Adafruit_NeoPixel.h>
 #include <Adafruit_SSD1306.h>
@@ -10,7 +8,6 @@ struct SensorReadings;
 
 #include "fireplace_config.h"
 #include "fire_animation.h"
-#include "sensor_readings.h"
 
 #ifdef ARDUINO_ARCH_ESP32
 #include <WebServer.h>
@@ -58,7 +55,6 @@ enum class OperatingMode { kFireOnly, kFireAndHeat, kHeatOnly };
 static bool heaterActive = false;
 static OperatingMode operatingMode = OperatingMode::kFireAndHeat;
 static float lastTemperatureC = NAN;
-static float lastHumidity = NAN;
 
 #ifdef ARDUINO_ARCH_ESP32
 static WebServer server(80);
@@ -124,16 +120,16 @@ static ButtonEvent updateButton(ButtonState &button) {
   return ButtonEvent::kNone;
 }
 
-static SensorReadings readTemperatureSensor() {
+static float readTemperatureSensor() {
   temperatureSensor.requestTemperatures();
   const float temperatureC = temperatureSensor.getTempCByIndex(0);
   if (temperatureC == DEVICE_DISCONNECTED_C) {
-    return {NAN, NAN};
+    return NAN;
   }
-  return {temperatureC, NAN};
+  return temperatureC;
 }
 
-static void updateDisplay(float currentTemperatureC, float currentHumidity) {
+static void updateDisplay(float currentTemperatureC) {
   if (!displayReady) {
     return;
   }
@@ -148,16 +144,6 @@ static void updateDisplay(float currentTemperatureC, float currentHumidity) {
   display.cp437(true);
   //display.write(247);  // Degree symbol
   display.println("C");
-
-  display.setCursor(70, 0);
-  display.println("Hum:");
-  display.setCursor(70, 10);
-  if (isnan(currentHumidity)) {
-    display.println("--");
-  } else {
-    display.print(currentHumidity, 0);
-    display.println("%");
-  }
 
   display.setCursor(0, 25);
   display.println("Set:");
@@ -192,17 +178,6 @@ static float smoothTemperature(float measurementC) {
   return (alpha * measurementC) + ((1.0f - alpha) * lastTemperatureC);
 }
 
-static float smoothHumidity(float measurement) {
-  if (isnan(measurement)) {
-    return lastHumidity;
-  }
-  if (isnan(lastHumidity)) {
-    return measurement;
-  }
-  const float alpha = FireplaceConfig::kHumiditySmoothAlpha;
-  return (alpha * measurement) + ((1.0f - alpha) * lastHumidity);
-}
-
 #ifdef ARDUINO_ARCH_ESP32
 static String htmlHeader() {
   return R"(<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>Fireplace</title><style>
@@ -229,13 +204,6 @@ static String renderPage() {
   } else {
     page += String(lastTemperatureC, 1);
     page += " &deg;C";
-  }
-  page += "<br/>Humidity: ";
-  if (isnan(lastHumidity)) {
-    page += "--";
-  } else {
-    page += String(lastHumidity, 0);
-    page += " %";
   }
   page += "<br/>Set: ";
   page += String(targetTemperatureC, 1);
@@ -446,17 +414,10 @@ void setup() {
 
 void loop() {
   handleButtons();
-  const SensorReadings readings = readTemperatureSensor();
-  const float currentTemperatureC = smoothTemperature(readings.temperatureC);
-  const float currentHumidity = smoothHumidity(readings.humidity);
+  const float currentTemperatureC = smoothTemperature(readTemperatureSensor());
   lastTemperatureC = currentTemperatureC;
-  lastHumidity = currentHumidity;
   updateHeater(currentTemperatureC);
-  updateDisplay(currentTemperatureC, currentHumidity);
+  updateDisplay(currentTemperatureC);
   FireAnimation::update(strip, fireState, effectiveBrightness());
   handleHttp();
 }
-
-#include "sensor_readings.h"
-#include <Adafruit_GFX.h>
-#include <Adafruit_NeoPixel.h>
