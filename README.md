@@ -59,7 +59,7 @@ Component connections are defined in `fireplace_config.h` and shown below for an
 board. Buttons are configured as active-low with the internal pull-up enabled, so wire each one
 between the listed GPIO and ground. Use a 5 V supply for the NeoPixel strip and relay module as
 required by your hardware, and share ground with the ESP32. The Micro OLED uses the default I²C
-bus (`GPIO 21`/`GPIO 22`) and a dedicated reset pin.
+bus (`GPIO 21`/`GPIO 22`).
 
 | Component                          | ESP32 pin | Notes                                               |
 | ---------------------------------- | --------- | --------------------------------------------------- |
