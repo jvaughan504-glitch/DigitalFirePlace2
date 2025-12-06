@@ -5,7 +5,7 @@
 namespace FireplaceConfig {
 // Pin assignments
 static constexpr uint8_t kRelayPin = 5;
-static constexpr uint8_t kDhtPin = 4;
+static constexpr uint8_t kTempSensorPin = 4;
 static constexpr uint8_t kNeoPixelPin = 18;
 static constexpr uint8_t kButtonTempUp = 25;
 static constexpr uint8_t kButtonTempDown = 26;
