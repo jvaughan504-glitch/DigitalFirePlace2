@@ -3,7 +3,8 @@ struct SensorReadings;
 #include <Adafruit_GFX.h>
 #include <Adafruit_NeoPixel.h>
 #include <Adafruit_SSD1306.h>
-#include <DHT.h>
+#include <DallasTemperature.h>
+#include <OneWire.h>
 #include <Wire.h>
 #include <math.h>
 
@@ -46,7 +47,8 @@ static ButtonState buttonMode{FireplaceConfig::kButtonMode, false, 0, 0, false};
 static Adafruit_SSD1306 display(128, 64, &Wire, FireplaceConfig::kOledResetPin);
 static Adafruit_NeoPixel strip(FireplaceConfig::kNeoPixelCount, FireplaceConfig::kNeoPixelPin,
                                NEO_GRB + NEO_KHZ800);
-static DHT dht(FireplaceConfig::kDhtPin, DHT11);
+static OneWire oneWire(FireplaceConfig::kTempSensorPin);
+static DallasTemperature temperatureSensor(&oneWire);
 static bool displayReady = false;
 static float targetTemperatureC = 21.0f;
 static uint8_t targetBrightness = 160;
@@ -122,10 +124,13 @@ static ButtonEvent updateButton(ButtonState &button) {
   return ButtonEvent::kNone;
 }
 
-static SensorReadings readDht() {
-  const float humidity = dht.readHumidity();
-  const float temperatureC = dht.readTemperature();
-  return {temperatureC, humidity};
+static SensorReadings readTemperatureSensor() {
+  temperatureSensor.requestTemperatures();
+  const float temperatureC = temperatureSensor.getTempCByIndex(0);
+  if (temperatureC == DEVICE_DISCONNECTED_C) {
+    return {NAN, NAN};
+  }
+  return {temperatureC, NAN};
 }
 
 static void updateDisplay(float currentTemperatureC, float currentHumidity) {
@@ -429,19 +434,19 @@ void setup() {
     drawSplash();
   }
 
-  randomSeed(analogRead(FireplaceConfig::kDhtPin));
+  randomSeed(analogRead(FireplaceConfig::kTempSensorPin));
 
   FireAnimation::begin(strip, effectiveBrightness());
   fireState.baseBrightness = effectiveBrightness();
   fireState.lastFrameMs = millis();
 
-  dht.begin();
+  temperatureSensor.begin();
   startWifiAndServer();
 }
 
 void loop() {
   handleButtons();
-  const SensorReadings readings = readDht();
+  const SensorReadings readings = readTemperatureSensor();
   const float currentTemperatureC = smoothTemperature(readings.temperatureC);
   const float currentHumidity = smoothHumidity(readings.humidity);
   lastTemperatureC = currentTemperatureC;
